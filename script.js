@@ -1,5 +1,16 @@
+const loadVariable = (src, type) => {
+  const script = document.createElement("script");
+  script.src = src;
+  document.head.append(script);
+
+  if (type === "apiKey") return script.FIREBASE_API_KEY;
+  throw Error("Variable type is undefined");
+};
+
+const apiKey = loadVariable("variables.js", "apiKey");
+
 const firebaseConfig = {
-  apiKey: "AIzaSyBgwEswyNa4R3jXmk8JnoaEdD7KMJ2F2QM",
+  apiKey: apiKey,
   authDomain: "voting-b90b3.firebaseapp.com",
   databaseURL: "https://voting-b90b3-default-rtdb.firebaseio.com",
   projectId: "voting-b90b3",
