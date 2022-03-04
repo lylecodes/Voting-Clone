@@ -21,63 +21,27 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 
-const paradePhotos = [
-  {
-    id: "photo_friends_who_love_love",
-    name: "Friends who love LOVE",
-    srcUrl:
-      "https://images.scribblelive.com/2019/8/31/e4d80602-c0fc-4122-ab89-441e83ce962f.jpg",
-    altText: "Friends who love LOVE 2019 Pride Parade photo",
-  },
-  {
-    id: "photo_pride_colors_police_car",
-    name: "Pride colors Police car",
-    srcUrl:
-      "https://images.scribblelive.com/2019/8/31/667911d7-2f7a-4de7-af46-bc61c2c163e3.jpg",
-    altText: "Pride colors Police car 2019 Pride Parade photo",
-  },
-  {
-    id: "photo_love_is_a_terrible_thing_to_hate",
-    name: "Love Is a Terrible Thing to Hate",
-    srcUrl:
-      "https://images.scribblelive.com/2019/8/31/f9a08979-b783-47db-8cb3-ff8c86aa576f.jpg",
-    altText: "Love Is a Terrible Thing to Hate 2019 Pride Parade photo",
-  },
-  {
-    id: "photo_winston_and_greg",
-    name: "Winston and Greg",
-    srcUrl:
-      "https://images.scribblelive.com/2019/8/31/b2842646-d731-4491-bfc8-e58d7662ab10.jpg",
-    altText: "Winston and Greg 2019 Pride Parade photo",
-  },
-  {
-    id: "photo_love_line",
-    name: "Love line",
-    srcUrl:
-      "https://images.scribblelive.com/2019/8/31/12a02c0a-081d-4369-89a3-e1196e0d8154.jpg",
-    altText: "Love line 2019 Pride Parade photo",
-  },
-  {
-    id: "photo_the_future_is_equal",
-    name: "THE FUTURE IS EQUAL",
-    srcUrl:
-      "https://images.scribblelive.com/2019/8/31/a9afe71f-a7ab-40ae-a087-5a85ac7b25d6.jpg",
-    altText: "THE FUTURE IS EQUAL  2019 Pride Parade photo",
-  },
-];
-
 const dbRef = firebase.database().ref();
 
-dbRef.on("value", () => {
-  loadParadePhotos(paradePhotos);
+dbRef.on("value", (snapshot) => {
+  if (snapshot.exists()) {
+    const data = snapshot.val();
+    const totalVotes = getVoteTotals(data);
+    loadParadePhotos(data, totalVotes);
+  } else {
+    throw Error("Error loading photos");
+  }
 });
 
-const loadParadePhotos = (photos) => {
+const loadParadePhotos = (data, totalVotes) => {
   const photosContainer = document.createElement("div");
   photosContainer.setAttribute("id", "photos_container");
 
-  photos.map((photo) => {
-    const { id, name, srcUrl, altText } = photo;
+  const { paradePhotos } = data;
+
+  paradePhotos.map((photoInfo, index) => {
+    const { name, srcUrl, altText, votes } = photoInfo;
+    console.log(votes);
 
     const photoContainer = document.createElement("div");
     photoContainer.setAttribute("class", "photo");
@@ -91,8 +55,16 @@ const loadParadePhotos = (photos) => {
     image.setAttribute("src", srcUrl);
     image.setAttribute("alt", altText);
 
+    const voteBtn = document.createElement("button");
+    voteBtn.setAttribute("id", `${index}`);
+    voteBtn.setAttribute("class", "btn btn-primary");
+    voteBtn.addEventListener("click", castVote);
+    voteBtn.innerHTML = `Votes: ${votes}, Total Votes: ${totalVotes}`;
+    console.log(voteBtn.innerHTML);
+
     photoContainer.appendChild(photoName);
     photoContainer.appendChild(image);
+    photoContainer.appendChild(voteBtn);
 
     photosContainer.appendChild(photoContainer);
   });
@@ -100,16 +72,46 @@ const loadParadePhotos = (photos) => {
   document.querySelector("#container").appendChild(photosContainer);
 };
 
-dbRef
-  .child("users")
-  .get()
-  .then((snapshot) => {
-    if (snapshot.exists()) {
-      console.log(snapshot.val());
-    } else {
-      console.log("No data available");
-    }
-  })
-  .catch((error) => {
-    console.error(error);
+const getVoteTotals = (data) => {
+  let totalVotes = 0;
+  const { paradePhotos } = data;
+
+  paradePhotos.map((photo) => {
+    totalVotes += photo.votes;
   });
+  return totalVotes;
+};
+
+const castVote = (evt) => {
+  const id = evt.target.id;
+  console.log(id);
+  dbRef
+    .child("paradePhotos")
+    .child(id)
+    .get()
+    .then((snapshot) => {
+      if (snapshot.exists()) {
+        const photoInfo = snapshot.val();
+        updateVote(photoInfo, id);
+      } else {
+        console.log("No data available");
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+};
+
+const updateVote = (data, photoId) => {
+  const { id, name, srcUrl, altText, votes } = data;
+  firebase
+    .database()
+    .ref("paradePhotos/" + photoId)
+    .set({
+      id: id,
+      name: name,
+      srcUrl: srcUrl,
+      altText: altText,
+      votes: votes + 1,
+    });
+};
