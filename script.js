@@ -24,6 +24,7 @@ firebase.initializeApp(firebaseConfig);
 const dbRef = firebase.database().ref();
 
 dbRef.on("value", (snapshot) => {
+  console.log("reload");
   if (snapshot.exists()) {
     const data = snapshot.val();
     const totalVotes = getVoteTotals(data);
@@ -34,6 +35,13 @@ dbRef.on("value", (snapshot) => {
 });
 
 const loadParadePhotos = (data, totalVotes) => {
+  let hasVoted = localStorage.getItem("photo vote");
+
+  const oldPhotosContainer = document.querySelector("#photos_container");
+  if (oldPhotosContainer !== null) {
+    console.log("removed");
+    oldPhotosContainer.remove();
+  }
   const photosContainer = document.createElement("div");
   photosContainer.setAttribute("id", "photos_container");
 
@@ -41,7 +49,6 @@ const loadParadePhotos = (data, totalVotes) => {
 
   paradePhotos.map((photoInfo, index) => {
     const { name, srcUrl, altText, votes } = photoInfo;
-    console.log(votes);
 
     const photoContainer = document.createElement("div");
     photoContainer.setAttribute("class", "photo");
@@ -55,16 +62,26 @@ const loadParadePhotos = (data, totalVotes) => {
     image.setAttribute("src", srcUrl);
     image.setAttribute("alt", altText);
 
+    const voteContainer = document.createElement("div");
+
     const voteBtn = document.createElement("button");
+    console.log(voteBtn.innerHTML);
     voteBtn.setAttribute("id", `${index}`);
     voteBtn.setAttribute("class", "btn btn-primary");
-    voteBtn.addEventListener("click", castVote);
-    voteBtn.innerHTML = `Votes: ${votes}, Total Votes: ${totalVotes}`;
-    console.log(voteBtn.innerHTML);
+
+    console.log(hasVoted);
+    if (!hasVoted) {
+      voteBtn.addEventListener("click", castVote);
+      voteBtn.innerHTML = "Vote";
+    } else {
+      voteBtn.innerHTML = `Votes: ${votes}, Total Votes: ${totalVotes}`;
+    }
+
+    voteContainer.appendChild(voteBtn);
 
     photoContainer.appendChild(photoName);
     photoContainer.appendChild(image);
-    photoContainer.appendChild(voteBtn);
+    photoContainer.appendChild(voteContainer);
 
     photosContainer.appendChild(photoContainer);
   });
@@ -83,8 +100,8 @@ const getVoteTotals = (data) => {
 };
 
 const castVote = (evt) => {
+  localStorage.setItem("photo vote", "voted");
   const id = evt.target.id;
-  console.log(id);
   dbRef
     .child("paradePhotos")
     .child(id)
